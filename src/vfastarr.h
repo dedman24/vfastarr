@@ -45,7 +45,7 @@ static vfastarr_hdrT* vfastarr_resize(vfastarr_hdrT* restrict hdr){
 }
 
 static vfastarr_hdrT* vfastarr_resize__explicit(vfastarr_hdrT* restrict hdr, const size_t amt){
-  if(hdr->capacity < amt) hdr->capacity += amt;
+  if(hdr->capacity*2 < amt) hdr->capacity += amt;
   else hdr->capacity *= 2;
 
   hdr = realloc(hdr, sizeof(*hdr) + hdr->capacity);
@@ -55,19 +55,19 @@ static vfastarr_hdrT* vfastarr_resize__explicit(vfastarr_hdrT* restrict hdr, con
 // appends element to array, returns updated array.
 void* vfastarr_append(void* restrict arr, const void* const restrict elem, const size_t s_elem){
   vfastarr_hdrT* restrict hdr = (vfastarr_hdrT*)arr - 1;
-  if(hdr->size == hdr->capacity){
+  if(hdr->size + s_elem > hdr->capacity){
     hdr = vfastarr_resize(hdr);
     arr = (void*)(hdr + 1);
   }
-  memcpy((char*)arr + hdr->size*s_elem, elem, s_elem);
+  memcpy((char*)arr + hdr->size, elem, s_elem);
   hdr->size += s_elem;
   return arr;
 }
 
 void* vfastarr_extend(void* restrict arr, const size_t c_elem, const size_t s_elem){
   vfastarr_hdrT* restrict hdr = (vfastarr_hdrT*)arr - 1;
-  if(hdr->size < hdr->capacity + c_elem*s_elem){
-    hdr = vfastarr_resize(hdr);
+  if(hdr->size + c_elem*s_elem > hdr->capacity){
+    hdr = vfastarr_resize__explicit(hdr, c_elem*s_elem);
     arr = (void*)(hdr + 1);
   }
   hdr->size += c_elem*s_elem;
@@ -82,7 +82,7 @@ void vfastarr_pop(void* restrict arr, void* const restrict elem, const size_t s_
     return;
   }
   hdr->size -= s_elem;
-  memcpy(elem, (char*)arr + hdr->size*s_elem, s_elem);
+  memcpy(elem, (char*)arr + hdr->size, s_elem);
 }
 
 void vfastarr_remove(void* restrict arr, const size_t s_elem){
@@ -94,6 +94,7 @@ void vfastarr_remove(void* restrict arr, const size_t s_elem){
 
 void* vfastarr_init(const size_t s_elem){
   vfastarr_hdrT* const restrict hdr = malloc(sizeof(vfastarr_hdrT) + 16*s_elem);
+  hdr->size = 0;
   hdr->capacity = 16*s_elem;
   return (void*)(hdr + 1);
 }
